@@ -18,12 +18,12 @@ Then, just call this function:
 * `obj` implements `dps.models.BasicTransactionProtocol` or
   `dps.models.FullTransactionProtocol`.
 
-* `request` is a Django request object or `None`. 
+* `request` is a Django request object or `None`.
 
   If you intend to make an interactive payment e.g. by redirecting the
   user to the DPS page, then provide a request. (It's needed to build
   fully-specified URLs for DPS to redirect back to.)
-  
+
   If `request` is `None`, the function will attempt to find and use a
   stored billing token (as described in the protocol implementations
   in `dps/models.py`) and make a non-interactive recurring payment.
@@ -41,14 +41,14 @@ transactions, just use GenericRelation:
     class MyModel(models.Model):
         ...
         transactions = generic.GenericRelation(Transaction)
-        
+
 There's also a `dps.admin.TransactionInlineAdmin` which you can use
 with your own model admins like so:
 
     class MyModelAdmin(admin.ModelAdmin):
         ...
         inlines = [TransactionInlineAdmin]
-        
+
     admin.site.register(MyModel, MyModelAdmin)
 
 ## Running tests
