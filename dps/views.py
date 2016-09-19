@@ -49,6 +49,8 @@ def process_transaction(request, token, param_overrides={}):
         if content_object.is_recurring():
             content_object.set_billing_token(result["DpsBillingId"] or None)
 
+    redirect_url = None
+
     # call the callback if it exists
     callback_name = 'transaction_succeeded' if success else \
                     'transaction_failed'
@@ -56,8 +58,17 @@ def process_transaction(request, token, param_overrides={}):
     if callback:
         redirect_url = callback(transaction=transaction, interactive=True,
                                 status_updated=status_updated)
-    else:
-        redirect_url = None
+        if redirect_url:
+            raise DeprecationWarning(
+                'Returning a url from the transaction_succeeded or '
+                'transaction_failed methods is deprecated, use '
+                'get_success_url or get_failure_url instead')
+
+    url_callback_name = 'transaction_succeeded' if success else \
+                        'transaction_failed'
+    url_callback = getattr(transaction.content_object, url_callback_name, None)
+    if url_callback:
+        redirect_url = callback(transaction=transaction)
 
     return redirect(
         redirect_url or

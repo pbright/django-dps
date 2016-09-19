@@ -145,11 +145,19 @@ class FullTransactionProtocol(object):
         raise NotImplementedError()
 
     def transaction_succeeded(self, transaction, interactive, status_updated):
-        """Called when a payment succeeds. Optional. May optionally return a
-           success url to take the place of views.transaction_success."""
+        """Called when a payment succeeds. Optional."""
         pass
 
     def transaction_failed(self, transaction, interactive, status_updated):
-        """Called when a payment fails. Optional. May optionally return a
-           success url to take the place of views.transaction_failure."""
+        """Called when a payment fails. Optional."""
+        pass
+
+    def transaction_success_url(self, transaction):
+        """Returns a success url to take the place of
+           views.transaction_success. Optional."""
+        pass
+
+    def transaction_failure_url(self, transaction):
+        """Returns a failure url to take the place of
+           views.transaction_failure. Optional."""
         pass
