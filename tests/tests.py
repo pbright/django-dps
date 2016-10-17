@@ -1,5 +1,6 @@
 import requests
 
+from django.conf import settings
 from django.test import TestCase, RequestFactory
 from django.utils.six import text_type
 from dps.transactions import make_payment
