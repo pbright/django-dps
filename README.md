@@ -2,6 +2,10 @@ DPS payment processing for django. (Almost) completely agnostic about
 your models. By default, you never handle credit card details. Handles
 one-off and recurring payments.
 
+[![Circle CI](https://circleci.com/gh/gregplaysguitar/django-dps.svg?style=svg)](https://circleci.com/gh/gregplaysguitar/django-dps)
+[![Latest Version](https://img.shields.io/pypi/v/django-dps.svg?style=flat)](https://pypi.python.org/pypi/django-dps/)
+
+
 # Usage:
 
 You'll need to add a few items in your `settings.py`: `PXPAY_USERID`
