@@ -1,5 +1,6 @@
 import requests
 
+from django.conf import settings
 from django.test import TestCase, RequestFactory
 from django.utils.six import text_type
 from dps.transactions import make_payment
@@ -13,6 +14,10 @@ class DpsTestCase(TestCase):
         self.factory = RequestFactory()
 
     def test_interactive(self):
+        if not settings.PXPAY_USERID:
+            # can't test the actual dps integration without test credentials
+            return
+        
         amount = 112.45
         payment = Payment.objects.create(amount=amount)
 

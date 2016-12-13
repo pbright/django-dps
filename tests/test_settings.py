@@ -15,4 +15,8 @@ INSTALLED_APPS = [
 
 ROOT_URLCONF = "tests.urls"
 
-from .dps_settings import *
+try:
+    from .dps_settings import *
+except ImportError:
+    PXPAY_USERID = None
+    PXPAY_KEY = None
