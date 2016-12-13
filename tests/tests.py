@@ -19,11 +19,11 @@ class DpsTestCase(TestCase):
         request = self.factory.get('/', HTTP_HOST='localhost:8000')
         response = make_payment(payment, request=request)
         self.assertEqual(response.status_code, 302)
-        response = requests.get(response['Location'])
+        response2 = requests.get(response['Location'])
 
         # check the dps page looks approximately correct
-        self.assertIn('Payment Checkout', response.text)
-        self.assertIn(text_type(amount), response.text)
+        self.assertIn('Payment Checkout', response2.text)
+        self.assertIn(text_type(amount), response2.text)
 
     def test_recurring(self):
         pass
