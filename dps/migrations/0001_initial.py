@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
                 ('amount', models.DecimalField(null=True, max_digits=10, decimal_places=2)),
                 ('secret', models.CharField(default=dps.models.make_uuid, unique=True, max_length=32, editable=False, db_index=True)),
                 ('result', models.TextField(blank=True)),
-                ('content_type', models.ForeignKey(to='contenttypes.ContentType')),
+                ('content_type', models.ForeignKey(to='contenttypes.ContentType', on_delete=models.CASCADE)),
             ],
             options={
                 'ordering': ('-created', '-id'),

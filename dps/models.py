@@ -40,7 +40,7 @@ class Transaction(models.Model):
     STATUS_CHOICES = [(s, s.title()) for s in
                       [PENDING, PROCESSING, SUCCESSFUL, FAILED]]
 
-    content_type = models.ForeignKey(ContentType)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
 
