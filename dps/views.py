@@ -1,3 +1,5 @@
+import warnings
+
 from django.shortcuts import get_object_or_404, redirect
 from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import render_to_response
@@ -5,6 +7,19 @@ from django.core.urlresolvers import reverse
 
 from .models import Transaction
 from .transactions import get_interactive_result
+
+
+def get_transaction_url(transaction):
+    status = transaction.status
+    obj = transaction.content_object
+
+    if status == Transaction.SUCCESSFUL and hasattr(obj, 'get_success_url'):
+        return obj.get_success_url()
+
+    elif status == Transaction.FAILED and hasattr(obj, 'get_failure_url'):
+        return obj.get_failure_url()
+
+    return reverse('dps_transaction_result', args=(transaction.secret, ))
 
 
 def process_transaction(request, token, param_overrides={}):
@@ -18,7 +33,7 @@ def process_transaction(request, token, param_overrides={}):
 
     # Redirecting if the transaction is already processed
     if transaction.status in (Transaction.SUCCESSFUL, Transaction.FAILED):
-        return redirect('dps_transaction_result', transaction.secret)
+        return redirect(get_transaction_url(transaction))
 
     # Don't process transactions that aren't at the correct stage
     if transaction.status != Transaction.PROCESSING:
@@ -55,24 +70,21 @@ def process_transaction(request, token, param_overrides={}):
     callback_name = 'transaction_succeeded' if success else \
                     'transaction_failed'
     callback = getattr(transaction.content_object, callback_name, None)
+
     if callback:
         redirect_url = callback(transaction=transaction, interactive=True,
                                 status_updated=status_updated)
+
         if redirect_url:
-            raise DeprecationWarning(
+            warnings.warn(
                 'Returning a url from the transaction_succeeded or '
                 'transaction_failed methods is deprecated, use '
-                'get_success_url or get_failure_url instead')
+                'get_success_url or get_failure_url instead',
+                DeprecationWarning)
+        else:
+            redirect_url = get_transaction_url(transaction)
 
-    url_callback_name = 'transaction_succeeded' if success else \
-                        'transaction_failed'
-    url_callback = getattr(transaction.content_object, url_callback_name, None)
-    if url_callback:
-        redirect_url = callback(transaction=transaction)
-
-    return redirect(
-        redirect_url or
-        reverse('dps_transaction_result', args=(transaction.secret, )))
+    return redirect(redirect_url)
 
 
 def transaction_result(request, token):
