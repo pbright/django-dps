@@ -26,7 +26,7 @@ def process_transaction(request, token, param_overrides={}):
     """Process a pxpay transaction using the result retrieved from dps, and
        redirect to the appropriate "success" or "failure" page.
 
-       This view is 100% atomic; repeated requests should just redirect to the
+       This view is indempotent; repeated requests should just redirect to the
        result page without hitting dps. """
 
     transaction = get_object_or_404(Transaction, secret=token)
