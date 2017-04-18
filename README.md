@@ -39,7 +39,7 @@ Then, just call this function:
   default parameters, provide credit-card details directly, specify a
   refund rather than purchase – anything DPS supports.
 
-To put an accessor/relationship on your own model to it's
+To put an accessor/relationship on your own model to its
 transactions, just use GenericRelation:
 
     class MyModel(models.Model):
