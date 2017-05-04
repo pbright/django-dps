@@ -81,7 +81,7 @@ def process_transaction(request, token, param_overrides={}):
                 'transaction_failed methods is deprecated, use '
                 'get_success_url or get_failure_url instead',
                 DeprecationWarning)
-    
+
     if not redirect_url:
         redirect_url = get_transaction_url(transaction)
 
