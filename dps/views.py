@@ -13,11 +13,13 @@ def get_transaction_url(transaction):
     status = transaction.status
     obj = transaction.content_object
 
-    if status == Transaction.SUCCESSFUL and hasattr(obj, 'get_success_url'):
-        return obj.get_success_url()
+    if status == Transaction.SUCCESSFUL and \
+            hasattr(obj, 'transaction_success_url'):
+        return obj.transaction_success_url()
 
-    elif status == Transaction.FAILED and hasattr(obj, 'get_failure_url'):
-        return obj.get_failure_url()
+    elif status == Transaction.FAILED and \
+            hasattr(obj, 'transaction_failure_url'):
+        return obj.transaction_failure_url()
 
     return reverse('dps_transaction_result', args=(transaction.secret, ))
 
@@ -79,7 +81,7 @@ def process_transaction(request, token, param_overrides={}):
             warnings.warn(
                 'Returning a url from the transaction_succeeded or '
                 'transaction_failed methods is deprecated, use '
-                'get_success_url or get_failure_url instead',
+                'transaction_success_url or transaction_failure_url instead',
                 DeprecationWarning)
 
     if not redirect_url:
