@@ -17,7 +17,7 @@ class DpsTestCase(TestCase):
         if not settings.PXPAY_USERID:
             # can't test the actual dps integration without test credentials
             return
-        
+
         amount = 112.45
         payment = Payment.objects.create(amount=amount)
 
