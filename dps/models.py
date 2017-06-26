@@ -152,12 +152,12 @@ class FullTransactionProtocol(object):
         """Called when a payment fails. Optional."""
         pass
 
-    def transaction_success_url(self, transaction):
+    def transaction_success_url(self, transaction=None):
         """Returns a success url to take the place of
            views.transaction_success. Optional."""
         pass
 
-    def transaction_failure_url(self, transaction):
+    def transaction_failure_url(self, transaction=None):
         """Returns a failure url to take the place of
            views.transaction_failure. Optional."""
         pass
