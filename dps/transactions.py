@@ -1,8 +1,11 @@
-import urllib, urllib2
 from xml.etree import cElementTree as ElementTree
 from django.conf import settings
 from django.http import HttpResponseRedirect
-from dps.models import Transaction
+from django.utils.six import text_type
+from django.utils.six.moves.urllib.request import Request, urlopen
+from django.core.urlresolvers import reverse
+
+from .models import Transaction
 
 
 def _get_setting(name):
@@ -11,29 +14,30 @@ def _get_setting(name):
 
 
 PXPAY_URL = getattr(settings, 'PXPAY_URL',
-                    'https://sec.paymentexpress.com/pxpay/pxaccess.aspx')
+                    'https://sec.paymentexpress.com/pxaccess/pxpay.aspx')
 PXPOST_URL = getattr(settings, 'PXPOST_URL',
                      'https://sec.paymentexpress.com/pxpost.aspx')
+DEFAULT_CURRENCY = getattr(settings, 'DEFAULT_CURRENCY', 'NZD')
 
 
 PXPAY_DEFAULTS = {
     "TxnType": "Purchase",
     "PxPayUserId": _get_setting("PXPAY_USERID"),
     "PxPayKey": _get_setting("PXPAY_KEY"),
-    "CurrencyInput": "NZD"}
+    "CurrencyInput": DEFAULT_CURRENCY}
 
 
 PXPOST_DEFAULTS = {
     "TxnType": "Purchase",
-    "InputCurrency": "NZD",
+    "InputCurrency": DEFAULT_CURRENCY,
     "PostUsername": _get_setting("PXPOST_USERID"),
     "PostPassword": _get_setting("PXPOST_KEY")}
 
 
 def _get_response(url, xml_body):
     """Takes and returns an ElementTree xml document."""
-    req = urllib2.Request(url, ElementTree.tostring(xml_body, encoding='utf-8'))
-    response = urllib2.urlopen(req)
+    req = Request(url, ElementTree.tostring(xml_body, encoding='utf-8'))
+    response = urlopen(req)
     ret = ElementTree.fromstring(response.read())
     response.close()
     return ret
@@ -50,7 +54,7 @@ def _params_to_xml_doc(params, root="GenerateRequest"):
         if isinstance(value, Exception):
             raise value
         elem = ElementTree.Element(key)
-        elem.text = unicode(value)
+        elem.text = text_type(value)
         root_tag.append(elem)
 
     return root_tag
@@ -75,7 +79,7 @@ def begin_interactive(params):
     return HttpResponseRedirect(response.find("URI").text)
 
 
-def get_interactive_result(result_key):
+def get_interactive_result(result_key, param_overrides={}):
     """Unfortunately PxPay and PxPost have different XML reprs for
     transaction results, so we need a specific function for each.
 
@@ -84,6 +88,7 @@ def get_interactive_result(result_key):
         "PxPayUserId": _get_setting("PXPAY_USERID"),
         "PxPayKey": _get_setting("PXPAY_KEY"),
         "Response": result_key}
+    params.update(param_overrides)
     result = _get_response(PXPAY_URL,
                            _params_to_xml_doc(params, root="ProcessResponse"))
 
@@ -96,24 +101,25 @@ def get_interactive_result(result_key):
         output[key] = result.find(key).text
 
     output["valid"] = result.get("valid")
-    
+
     return output
 
 
 def offline_payment(params):
-    """Make a non-interactive payment. Synchronous. Returns (success?, result)."""
+    """Make a non-interactive payment. Synchronous. Returns (success?, result).
+    """
     try:
         assert (params.get("BillingId", None) or
                 params.get("DpsBillingId", None) or
                 (params.get("CardNumber", None) and params.get("Cvc2", None)))
         assert params.get("TxnId", None)
-    except AssertionError, e:
+    except AssertionError as e:
         return (False, e)
 
     merged_params = {}
     merged_params.update(PXPOST_DEFAULTS)
     merged_params.update(params)
-    
+
     result = _get_response(PXPOST_URL,
                            _params_to_xml_doc(merged_params, root="Txn"))
 
@@ -130,14 +136,20 @@ def offline_payment(params):
         result = _get_response(PXPOST_URL,
                                _params_to_xml_doc(status_params, root="Txn"))
 
-        
     success = result.find(".//Authorized").text == "1"
-    return (success, ElementTree.tostring(result))
+
+    result_dict = {}
+    for node in result.findall('.//'):
+        if node.text:
+            result_dict[node.tag] = node.text
+    return (success, result_dict)
 
 
-def make_payment(content_object, request=None, transaction_opts={}):
-    """Main entry point. If we have a request we do it interactive, otherwise it's a batch/offline payment."""
-    
+def make_payment(content_object, request=None, transaction_opts={},
+                 get_return_url=None):
+    """Main entry point. If we have a request we do it interactive, otherwise
+       it's a batch/offline payment."""
+
     trans = Transaction(content_object=content_object)
     trans.status = Transaction.PROCESSING
     trans.save()
@@ -151,18 +163,25 @@ def make_payment(content_object, request=None, transaction_opts={}):
 
     if request:
         # set up params for an interactive payment
-        url_root = u"http://%s" % request.META['HTTP_HOST']
-        params.update({"UrlFail": url_root + trans.get_failure_url(),
-                       "UrlSuccess": url_root + trans.get_success_url()})
+        if get_return_url:
+            return_url = get_return_url(trans)
+        else:
+            return_url = reverse('dps_process_transaction',
+                                 args=(trans.secret, ))
+        return_url = u"http://%s" % request.META['HTTP_HOST'] + \
+                     return_url
+        params.update({"UrlFail": return_url,
+                       "UrlSuccess": return_url})
         if getattr(content_object, "is_recurring", lambda: False)():
             assert hasattr(content_object, "set_billing_token")
             assert hasattr(content_object, "get_billing_token")
             params["EnableAddBillCard"] = "1"
     else:
         # set up for an offline/batch payment.
-        params.update({"DpsBillingId": content_object.get_billing_token(),
-                       "TxnId": trans.transaction_id})
-    
+        params.update({"TxnId": trans.transaction_id})
+        if hasattr(content_object, 'get_billing_token'):
+            params.update({"DpsBillingId": content_object.get_billing_token()})
+
     params.update(transaction_opts)
 
     if request:
@@ -170,15 +189,14 @@ def make_payment(content_object, request=None, transaction_opts={}):
     else:
         (success, result) = offline_payment(params)
         if success:
-            status_updated = trans.set_status(Transaction.SUCCESSFUL)
+            status_updated = trans.complete_transaction(True)
             callback = getattr(content_object, "transaction_succeeded",
                                lambda *args: None)
         else:
-            status_updated = trans.set_status(Transaction.FAILED)
-            callback = getattr(content_object, "transaction_failed", 
+            status_updated = trans.complete_transaction(False)
+            callback = getattr(content_object, "transaction_failed",
                                lambda *args: None)
-        trans.result = result
+        trans.result_dict = result
         trans.save()
-        callback(trans, False, status_updated)
-        return (success, trans)
-
+        redirect_url = callback(transaction=trans, interactive=False, status_updated=status_updated)
+        return (success, trans, redirect_url)

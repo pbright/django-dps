@@ -1,11 +1,10 @@
-try:
-    from django.conf.urls import *
-except ImportError:
-    # pre Django 1.4
-    from django.conf.urls.defaults import *
-    
+from django.conf.urls import url
 
-urlpatterns = patterns('dps.views',
-    (r'^success/(?P<token>.*)$', 'transaction_success'),
-    (r'^failure/(?P<token>.*)$', 'transaction_failure'),
+from . import views
+
+urlpatterns = (
+    url(r'^process/(?P<token>.*)$', views.process_transaction, {},
+        'dps_process_transaction'),
+    url(r'^result/(?P<token>.*)$', views.transaction_result, {},
+        'dps_transaction_result'),
 )
