@@ -3,7 +3,10 @@ import warnings
 from django.shortcuts import get_object_or_404, redirect
 from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import render_to_response
-from django.core.urlresolvers import reverse
+try:
+    from django.urls import reverse
+except ImportError:
+    from django.core.urlresolvers import reverse
 
 from .models import Transaction
 from .transactions import get_interactive_result
