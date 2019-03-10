@@ -53,6 +53,9 @@ class Transaction(models.Model):
 
     secret = models.CharField(max_length=32, editable=False, default=make_uuid,
                               unique=True, db_index=True)
+
+    # Now represented by TransactionResult.
+    # TODO: Data migration converting these to TransactionResults, then remove
     result = models.TextField(blank=True)
 
     objects = TransactionQuerySet.as_manager()
@@ -107,6 +110,24 @@ class Transaction(models.Model):
         """DPS has a stupid 16-char limit on TxnId. We use the last
         half (most random part) of the uuid with pk appended."""
         return (u"%s/%d" % (self.secret, self.pk))[-16:]
+
+
+@python_2_unicode_compatible
+class TransactionResult(models.Model):
+    transaction = models.OneToOneField(Transaction,
+                                       related_name='trans_result')
+    result = models.TextField(blank=True)
+
+    def get_result_dict(self):
+        return json.loads(self.result)
+
+    def set_result_dict(self, result_dict):
+        self.result = json.dumps(result_dict, indent=4, sort_keys=True)
+
+    result_dict = property(get_result_dict, set_result_dict)
+
+    def __str__(self):
+        return 'Result of %s' % self.transaction
 
 
 # Two choices follow. BasicTransactionProtocol is the minimal subset

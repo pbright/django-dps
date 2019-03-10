@@ -3,12 +3,13 @@ import warnings
 from django.shortcuts import get_object_or_404, redirect
 from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import render_to_response
+from django.db import IntegrityError
 try:
     from django.urls import reverse
 except ImportError:
     from django.core.urlresolvers import reverse
 
-from .models import Transaction
+from .models import Transaction, TransactionResult
 from .transactions import get_interactive_result
 
 
@@ -50,9 +51,15 @@ def process_transaction(request, token, param_overrides={}):
         return HttpResponseBadRequest('No result token supplied')
     result = get_interactive_result(result_token, param_overrides)
 
-    # save transaction result in all cases
-    transaction.result_dict = result
-    transaction.save()
+    # Save transaction result in all cases, avoiding a race condition by
+    # catching the IntegrityError that will be raised if the Transaction
+    # already has a TransactionResult
+    try:
+        transaction_result = TransactionResult(transaction=transaction)
+        transaction_result.result_dict = result
+        transaction_result.save()
+    except IntegrityError:
+        return redirect('dps_transaction_result', transaction.secret)
 
     success = result['Success'] == '1'
 
